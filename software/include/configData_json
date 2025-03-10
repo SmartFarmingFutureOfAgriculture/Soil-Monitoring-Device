@@ -1,0 +1,47 @@
+{
+    "gateway": {
+        "name": "SoilMonitorNode_1",
+        "title": "Farm Germany",
+        "status": "active",
+        "token": "7tWaKE8JtJmm30tkNp7Z",
+        "country": "Germany",
+        "coordinates": {
+            "x": 48.423496,
+            "y": 9.955196,
+            "z": 0
+        },
+        "function": {
+            "Soil_monitoring": "Field-1"
+        }
+    },
+    "sensors": [
+        {
+            "name": "INA260",
+            "title": "Power management",
+            "status": "active",
+            "protocol": "I2C",
+            "protocol_config": {
+                "address": "0x40",
+                "speed": "150000"
+            },
+            "function": {
+                "Charge": "monitoring"
+            }
+        },
+        {
+            "name": "SenTecNPKSEM225",
+            "title": "NPK 7 in 1",
+            "status": "inactive",
+            "protocol": "Modbus",
+            "protocol_config": {
+                "address": 42001,
+                "baud_rate": 9600
+            },
+            "function": {
+                "Plant_type": "Wheat",
+                "Growth_stage": "Seedling",
+                "Planting_date": "2024-03-15"
+            }
+        }
+    ]
+}
