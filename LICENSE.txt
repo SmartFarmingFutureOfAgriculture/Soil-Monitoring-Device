@@ -1,0 +1,8 @@
+This project is licensed under the GNU General Public License v2 (GPL-2.0) for software 
+and the CERN Open Hardware License (CERN OHL) for hardware.
+
+Full GPL-2.0 License: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
+Full CERN OHL License: https://ohwr.org/project/cernohl/wikis/home
+
+NO WARRANTY: This project is provided "as is", without any express or implied warranty. 
+The developer assumes no liability for any damages resulting from its use.
