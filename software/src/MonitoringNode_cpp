@@ -1,0 +1,185 @@
+/*
+ * Smart Farming Soil Monitoring System
+ * Copyright (C) 2024 Smart Farming gGmbH
+ *
+ * This software is released under the GNU General Public License v2 (GPL-2.0).
+ * You are free to use, modify, and distribute it under the terms of this license.
+ *
+ * NO WARRANTY: This software is provided "as is", without any warranty of any kind.
+ * The developer assumes no liability for damages resulting from its use.
+ *
+ * See the full license at: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
+ */
+
+#include <ArduinoJson.h>
+#include <WakeupHandler.h>
+#include <MonitoringNode.h>
+#include <PinConfig.h>
+#include <LoRaHandler.h>
+#include <config.h>
+#include <driver/rtc_io.h> // RTC GPIO functions
+#include <mbedtls/md.h>
+#include <GSMClient.h>
+
+/**
+ * @brief Handles the entire program sequence.
+ *
+ * - Initializes the pins.
+ * - Sends voltage, current and power to the cloud.
+ * - Checks the reason for the wakeup and decides on the necessary measures.
+ */
+void MonitoringNode::begin(float voltage, float current, float power)
+{
+    // Checks the reason why the ESP32 was woken up
+    String wakeReason = WakeupHandler::getWakeupReason();
+
+    if (wakeReason == "Button pressed")
+    {
+#ifdef DEBUG
+        Debug::drawWrappedText(u8g2, "Wakeup reason: +++ Button pressed +++", 0, 12, 128, 12);
+        delay(1000);
+#endif
+        handleButtonPress();
+    }
+    else if (wakeReason == "LoRa signal received")
+    {
+#ifdef DEBUG
+        Debug::drawWrappedText(u8g2, "Wakeup reason: +++ LoRa signal received +++", 0, 12, 128, 12);
+        delay(1000);
+#endif
+        handleLoRaSignal();
+    }
+    else if (wakeReason == "Timer triggered")
+    {
+#ifdef DEBUG
+        Debug::drawWrappedText(u8g2, "Wakeup reason: +++ Timer triggered +++", 0, 12, 128, 12);
+        delay(1000);
+#endif
+        handleTimerWakeup(voltage, current, power);
+    }
+    else
+    {
+#ifdef DEBUG
+        Debug::drawWrappedText(u8g2, "Wakeup reason: +++ Power on +++", 0, 12, 128, 12);
+        delay(1000);
+#endif
+        handlePowerOn();
+    }
+}
+
+/**
+ * @brief Handles logic for when the device is woken up by a button press.
+ */
+void MonitoringNode::handleButtonPress()
+{
+    // TODO: Implement button handling logic
+}
+
+/**
+ * @brief Handles logic for when the device is woken up by a LoRa signal.
+ */
+void MonitoringNode::handleLoRaSignal()
+{
+    // TODO: Implement LoRa message handling
+}
+
+/**
+ * @brief Handles logic for when the device is woken up by a timer interrupt.
+ */
+void MonitoringNode::handleTimerWakeup(float voltage, float current, float power)
+{
+    // TODO: Implement periodic measurement logic
+
+    // Compile data in JSON format
+    char payload[128];
+    snprintf(payload, sizeof(payload), "{\"voltage\":%.1f,\"current\":%.1f,\"power\":%.1f}", voltage, current, power);
+
+    // Initialization and connection to GSM
+    gsmClient.init();
+    gsmClient.connect();
+
+    // Initialize MQTT server
+    gsmClient.mqttConfig();
+    // Connect to MQTT server
+    gsmClient.mqttConnect();
+    // Disconnect MQTT connection
+    gsmClient.mqttDisconnect();
+
+#ifdef DEBUG
+    Debug::drawWrappedText(u8g2, "Go to sleep.", 0, 12, 128, 12);
+    delay(3000);
+    MonitoringNode::goToDeepSleep();
+#endif
+}
+
+/**
+ * @brief Handles the initialization and setup when power is first applied to the device.
+ */
+void MonitoringNode::handlePowerOn()
+{
+    // Read ESP's MAC address
+    uint8_t mac[6];
+    esp_efuse_mac_get_default(mac);
+
+    char token[33]; // 32 byte + null termination = 33 byte
+    MonitoringNode::generateTokenFromMac(mac, token, sizeof(token));
+
+    // Turn on SIM800L GSM modem and configure it
+    gsmClient.init();
+    
+    // Connect SIM card to provider
+    gsmClient.connect();
+
+    // Connect to MQTT server and request JASON configuration structure
+    gsmClient.mqttConnect();
+
+    // Configuration of MQTT connection
+    gsmClient.mqttConfig();
+
+    // Subscripe to device config
+    // gsmClient.subscribeToConfigTopic();
+    // Request device configuration - sensor_config JASON
+    // gsmClient.requestConfig();
+
+#ifdef DEBUG
+    Debug::drawWrappedText(u8g2, "Got to sleep (later)", 0, 12, 128, 12);
+    delay(1000);
+    // MonitoringNode::goToDeepSleep();
+#endif
+}
+
+// Turn off +5V and +12V power supplies, send ESP32 to deep sleep
+void MonitoringNode::goToDeepSleep()
+{
+    // Disconnect GSM and turn off +5 power supply
+    gsmClient.gsmDisconnect();
+
+    // Turn off +12 power supply
+    rtc_gpio_set_level((gpio_num_t)PIN_12V_ENABLE, LOW);
+    digitalWrite((gpio_num_t)PIN_12V_ENABLE, LOW);
+
+    // Configure wakeup ( minutes x seconds x micro seconds)
+    esp_sleep_enable_timer_wakeup(5 * 60 * 1000000);
+    //...and send ESP32 to deep sleep
+    esp_deep_sleep_start();
+}
+
+// Generate hash-tokens (SHA256) based on MAC address
+void MonitoringNode::generateTokenFromMac(const uint8_t *mac, char *outputToken, size_t outputSize)
+{
+    // Generate SHA256 hash of MAC address
+    uint8_t hash[32];
+    mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), mac, 6, hash);
+
+    // Transfer hash in hex string
+    for (int i = 0; i < 16; i++)
+    { // option: use the first 16 Bytes only
+        sprintf(&outputToken[i * 2], "%02X", hash[i]);
+    }
+    outputToken[32] = '\0'; // Null terminiered
+#ifdef DEBUG
+    // Buffer for String conversion
+    Debug::drawWrappedText(u8g2, ("Token: " + String(outputToken)).c_str(), 0, 12, 128, 12);
+    delay(1000);
+#endif
+}
