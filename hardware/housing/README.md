@@ -1,3 +1,5 @@
+The housing can be produced with a 3D printer
+
 Smart Farming Soil Monitoring System
 Copyright (C) 2024 Smart Farming gGmbH
 
