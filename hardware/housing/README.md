@@ -1,4 +1,8 @@
-The housing can be produced with a 3D printer
+The housing can be produced with a 3D printer. The hardware design files were created using:
+
+    FreeCAD (for 3D enclosure modeling) → https://www.freecadweb.org/
+
+💡 To modify the hardware, install FreeCAD, then open the project files.
 
 Smart Farming Soil Monitoring System
 Copyright (C) 2024 Smart Farming gGmbH
